@@ -1,3 +1,0 @@
-/Users/owenmilgram/Documents/personal/projects/c/http-server/src/http-server/build/CMakeFiles/http-server.dir
-/Users/owenmilgram/Documents/personal/projects/c/http-server/src/http-server/build/CMakeFiles/edit_cache.dir
-/Users/owenmilgram/Documents/personal/projects/c/http-server/src/http-server/build/CMakeFiles/rebuild_cache.dir
