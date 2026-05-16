@@ -13,6 +13,15 @@ typedef struct addrinfo addrinfo;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr_in6 sockaddr_in6;
 
+typedef struct ipv4_node {
+    sockaddr_in sockaddr_in;
+    struct ipv4_node *next;
+} ipv4_node;
+typedef struct ipv6_node{
+    sockaddr_in6 sockaddr_in6;
+    struct ipv6_node *next;
+} ipv6_node;
+
 typedef struct {
     char *name;
     size_t name_length;
