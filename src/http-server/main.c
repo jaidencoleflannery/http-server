@@ -54,7 +54,8 @@ int main(int argc, char **argv) {
         }
 
         DEBUG_LOG("[ DEBUG ] main: Printing found IPv4 addresses.\n");
-        ipv4_cursor = &ipv4_list_head;
+        ipv4_cursor = ipv4_list_head.next;
+        ipv4_node *ipv4_cleanup_cursor = ipv4_cursor;
         while(ipv4_cursor != NULL) {
             char ipv4_address[INET_ADDRSTRLEN];
             void *binary_address = &(ipv4_cursor->sockaddr_in.sin_addr);
@@ -64,10 +65,15 @@ int main(int argc, char **argv) {
 
             printf("[ IPv4 ] %s:%u.\n", ipv4_address, ipv4_port);
             ipv4_cursor = ipv4_cursor->next;
+
+            // free memory on the tail.
+            free(ipv4_cleanup_cursor);
+            ipv4_cleanup_cursor = ipv4_cursor;
         }
 
         DEBUG_LOG("[ DEBUG ] main: Printing found IPv6 addresses.\n");
-        ipv6_cursor = &ipv6_list_head;
+        ipv6_cursor = ipv6_list_head.next;
+        ipv6_node *ipv6_cleanup_cursor = ipv6_cursor;
         while(ipv6_cursor != NULL) {
             char ipv6_address[INET6_ADDRSTRLEN];
             void *binary_address = &(ipv6_cursor->sockaddr_in6.sin6_addr);
@@ -77,6 +83,10 @@ int main(int argc, char **argv) {
 
             printf("[ IPv6 ] %s:%u.\n", ipv6_address, ipv6_port);
             ipv6_cursor = ipv6_cursor->next;
+            
+            // free memory on the tail.
+            free(ipv6_cleanup_cursor);
+            ipv6_cleanup_cursor = ipv6_cursor;
         }
 
         DEBUG_LOG("[ DEBUG ] main: Reached end of code.\n");
