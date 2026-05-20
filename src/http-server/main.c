@@ -1,8 +1,8 @@
 #include <stdlib.h>
 
-#include "./include/logging/logging.h"
+#include "./services/logging/logging.h"
 
-#include "./include/types/generic_types.h"
+#include "./types/address_types.h"
 
 int main(int argc, char **argv) {
     static hostname target_host; 
@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 
     addrinfo *addr_list;
 
-    if(getaddrinfo("google.com", "80", &address_request, &addr_list) != 0) {
+    if(getaddrinfo(target_host.name, "80", &address_request, &addr_list) != 0) {
         DEBUG_LOG("main: Failed to retrieve addresses for %s.\n", target_host.name);
         return -1;
     } else {
