@@ -8,7 +8,7 @@
 #define ERROR_LOG(input, ...) fprintf(stderr, "[ ERROR ] " input, ##__VA_ARGS__)
 
 #ifndef NDEBUG
-#define DEBUG_LOG(input, ...) fprintf(stderr, "[ DEBUG ] " input, ##__VA_ARGS__)
+#define DEBUG_LOG(input, ...) fprintf(stderr, "    [ DEBUG ] " input, ##__VA_ARGS__)
 #else
 #define DEBUG_LOG(input) ((void)0)
 #endif
