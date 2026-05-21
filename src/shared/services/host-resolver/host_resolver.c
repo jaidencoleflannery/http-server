@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <netdb.h>
 
-#include "host_resolver.h"
+#include "types/address-types/address_types.h"
+#include "services/logging/logging.h"
+#include "utilities/string-tools/string_tools.h"
 
-#include "../logging/logging.h"
-#include "../../utilities/string-tools/string_tools.h"
+#include "./host_resolver.h"
 
 bool get_addresses(char *target_name, bool is_https, ipv4_node **ipv4_list_head, ipv6_node **ipv6_list_head) {
     if(target_name == NULL) {

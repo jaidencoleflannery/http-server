@@ -26,6 +26,7 @@ typedef struct ipv6_node{
 typedef struct {
     char *name;
     size_t name_length;
+    char *port;
 } hostname;
 
 #endif
