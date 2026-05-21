@@ -6,4 +6,6 @@ build/
 *.dylib
 *.out
 *.dSYM/
+*.cache*
 .DS_Store
+
