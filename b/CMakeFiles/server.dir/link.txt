@@ -1,0 +1,2 @@
+/usr/bin/ar qc libserver.a "CMakeFiles/server.dir/src/http-server/services/host-resolver/host_resolver.c.o" "CMakeFiles/server.dir/src/http-server/utilities/string-tools/string_tools.c.o"
+/usr/bin/ranlib libserver.a

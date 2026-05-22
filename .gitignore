@@ -7,5 +7,6 @@ build/
 *.out
 *.dSYM/
 *.cache*
+*.idx
 .DS_Store
 

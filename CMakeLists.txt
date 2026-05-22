@@ -4,14 +4,15 @@ cmake_minimum_required(VERSION 3.20)
 project(
     orb 
     VERSION 1.0
-    DESCRIPTION "An efficient, scalable server, built in C."
+    DESCRIPTION "A hyper-efficient HTTP server, built in C."
     LANGUAGES C
 )
 
 add_library(
-    shared
-    ./src/shared/services/host-resolver/host_resolver.c
-    ./src/shared/utilities/string-tools/string_tools.c 
+    server
+    ./src/http-server/services/host-resolver/host_resolver.c
+    ./src/http-server/services/connection-handler/connection_handler.c
+    ./src/http-server/utilities/string-tools/string_tools.c 
 )
 
 add_executable(
@@ -21,9 +22,9 @@ add_executable(
 
 target_compile_options(orb PRIVATE -Wall -Wextra -Wpedantic -std=c17)
 
-target_include_directories(orb PRIVATE "./src/shared/")
-target_include_directories(shared PRIVATE "./src/shared/")
-target_link_libraries(orb PRIVATE shared)
+target_include_directories(orb PRIVATE "./src/http-server/")
+target_include_directories(server PRIVATE "./src/http-server/")
+target_link_libraries(orb PRIVATE server)
 
 set(CMAKE_BUILD_TYPE Debug)
 

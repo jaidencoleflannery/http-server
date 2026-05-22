@@ -1,0 +1,20 @@
+[
+{
+  "directory": "/Users/owenmilgram/Documents/personal/projects/orb-weaver/b",
+  "command": "/usr/bin/cc  -I/Users/owenmilgram/Documents/personal/projects/orb-weaver/./src/http-server -g -arch arm64 -o CMakeFiles/server.dir/src/http-server/services/host-resolver/host_resolver.c.o -c /Users/owenmilgram/Documents/personal/projects/orb-weaver/src/http-server/services/host-resolver/host_resolver.c",
+  "file": "/Users/owenmilgram/Documents/personal/projects/orb-weaver/src/http-server/services/host-resolver/host_resolver.c",
+  "output": "CMakeFiles/server.dir/src/http-server/services/host-resolver/host_resolver.c.o"
+},
+{
+  "directory": "/Users/owenmilgram/Documents/personal/projects/orb-weaver/b",
+  "command": "/usr/bin/cc  -I/Users/owenmilgram/Documents/personal/projects/orb-weaver/./src/http-server -g -arch arm64 -o CMakeFiles/server.dir/src/http-server/utilities/string-tools/string_tools.c.o -c /Users/owenmilgram/Documents/personal/projects/orb-weaver/src/http-server/utilities/string-tools/string_tools.c",
+  "file": "/Users/owenmilgram/Documents/personal/projects/orb-weaver/src/http-server/utilities/string-tools/string_tools.c",
+  "output": "CMakeFiles/server.dir/src/http-server/utilities/string-tools/string_tools.c.o"
+},
+{
+  "directory": "/Users/owenmilgram/Documents/personal/projects/orb-weaver/b",
+  "command": "/usr/bin/cc  -I/Users/owenmilgram/Documents/personal/projects/orb-weaver/./src/http-server -g -arch arm64 -Wall -Wextra -Wpedantic -std=c17 -o CMakeFiles/orb.dir/src/http-server/main.c.o -c /Users/owenmilgram/Documents/personal/projects/orb-weaver/src/http-server/main.c",
+  "file": "/Users/owenmilgram/Documents/personal/projects/orb-weaver/src/http-server/main.c",
+  "output": "CMakeFiles/orb.dir/src/http-server/main.c.o"
+}
+]
