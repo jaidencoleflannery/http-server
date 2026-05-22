@@ -19,14 +19,12 @@ int main(int argc, char **argv) {
 
     addrinfo *address_cursor = &address_list;
 
-    #ifdef NDEBUG
-        sockaddr_in *address = (sockaddr){
-            sin_family: AF_INET;
-            sin_port: "4916"
-            sin_addr: "127.0.0.1";
-        }
-        inet_htons(AF_INET, "8888", &)
-        inet_pton(AF_INET, "127.0.0.1", &address.sin_addr) 
+    #ifndef NDEBUG
+        sockaddr_in address = (sockaddr_in){
+            .sin_family = AF_INET,
+            .sin_port = htons(8888)
+        };
+        inet_pton(AF_INET, "127.0.0.1", &address.sin_addr);
     #else
         sockaddr *address = address_cursor->ai_addr;
     #endif
