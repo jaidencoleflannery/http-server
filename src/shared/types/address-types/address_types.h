@@ -10,6 +10,7 @@
 #define INET_PORTSTRLEN 6
 
 typedef struct addrinfo addrinfo;
+typedef struct sockaddr sockaddr;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr_in6 sockaddr_in6;
 

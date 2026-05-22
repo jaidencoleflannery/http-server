@@ -5,7 +5,6 @@
 
 #include "types/address-types/address_types.h"
 #include "services/logging/logging.h"
-#include "utilities/string-tools/string_tools.h"
 
 #include "./host_resolver.h"
 
@@ -22,7 +21,8 @@ bool get_local_addresses(bool is_https, addrinfo *address_list) {
     };
 
     int status;
-    if((status = getaddrinfo(NULL, (is_https) ? "443" : "80", &address_request, &address_list)) != 0) { 
+    // TODO: switch the port to be configurable.
+    if((status = getaddrinfo(NULL, "8888", &address_request, &address_list)) != 0) { 
         ERROR_LOG("get_local_addresses: Error resolving addresses: %s\n", gai_strerror(status));
         return false;
     }
@@ -31,7 +31,7 @@ bool get_local_addresses(bool is_https, addrinfo *address_list) {
     return true;
 }
 
-bool print_addresses(ipv4_node *ipv4_list, ipv6_node *ipv6_list) {  
+bool print_local_addresses(ipv4_node *ipv4_list, ipv6_node *ipv6_list) {
     DEBUG_LOG("print_addresses: Printing provided addresses.\n");
 
     ipv4_node *ipv4_cursor = ipv4_list->next;
