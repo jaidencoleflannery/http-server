@@ -17,20 +17,30 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    addrinfo *address_cursor = &address_list;
-
-    #ifndef NDEBUG
-        sockaddr_in address = (sockaddr_in){
-            .sin_family = AF_INET,
-            .sin_port = htons(8888)
-        };
-        inet_pton(AF_INET, "127.0.0.1", &address.sin_addr);
-    #else
-        sockaddr *address = address_cursor->ai_addr;
-    #endif
+    addrinfo *address_cursor = &address_list; 
 
     while(address_cursor != NULL) { 
-        int socket_descriptor = socket(address_cursor->ai_family, address_cursor->ai_protocol, 0);
+        // if debugging use localhost loopback.
+        #ifndef NDEBUG
+            sockaddr_in address = (sockaddr_in){
+                .sin_family = AF_INET,
+                .sin_port = htons(PORT)
+            };
+            inet_pton(AF_INET, IPV4_LOCALHOST, &address.sin_addr);
+        #else
+            sockaddr *address = address_cursor->ai_addr;
+        #endif
+
+        int socket_descriptor;
+        if((socket_descriptor = socket(address_cursor->ai_family, address_cursor->ai_protocol, 0)) < 0) {
+            char *socket_error = strerror(errno);
+            DEBUG_LOG("main: Failed to open a socket, error: %s.\n", socket_error);
+            address_cursor = address_cursor->ai_next; 
+            continue;
+        }
+
+        setsockopt(socket_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+
         int status; 
         if((status = bind(socket_descriptor, address_cursor->ai_addr, address_cursor->ai_addrlen)) != 0) {
             char *bind_error = strerror(errno);
@@ -38,9 +48,8 @@ int main(int argc, char **argv) {
             close(socket_descriptor);
             address_cursor = address_cursor->ai_next; 
             continue;
-        } else {
-    
         }
+            
     }
 
     freeaddrinfo(&address_list);

@@ -7,6 +7,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define PORT 8888
+#define PORTSTRING "8888"
+#define IPV4_LOCALHOST "127.0.0.1"
+#define IPV6_LOCALHOST "::1"
 #define INET_PORTSTRLEN 6
 
 typedef struct addrinfo addrinfo;

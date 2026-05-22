@@ -22,7 +22,7 @@ bool get_local_addresses(bool is_https, addrinfo *address_list) {
 
     int status;
     // TODO: switch the port to be configurable.
-    if((status = getaddrinfo(NULL, "8888", &address_request, &address_list)) != 0) { 
+    if((status = getaddrinfo(NULL, PORTSTRING, &address_request, &address_list)) != 0) { 
         ERROR_LOG("get_local_addresses: Error resolving addresses: %s\n", gai_strerror(status));
         return false;
     }
