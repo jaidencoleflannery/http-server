@@ -1,8 +1,8 @@
 #ifndef HOST_RESOLVER_H
 #define HOST_RESOLVER_H
 
-bool get_addresses(char *target_name, bool is_https, ipv4_node **ipv4_list_head, ipv6_node **ipv6_list_head);
+bool get_local_addresses(bool is_https, addrinfo *addr_list);
 
-bool print_addresses(char *target_name, bool is_https);
+bool print_addresses(ipv4_node *ipv4_list, ipv6_node *ipv6_list);
 
 #endif
