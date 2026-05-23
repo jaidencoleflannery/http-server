@@ -3,5 +3,7 @@
 
 #define NUM_FIELDS 20
 
+extern const char *configuration_names[];
+
 #endif
 
