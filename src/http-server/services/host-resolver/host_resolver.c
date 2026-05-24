@@ -5,6 +5,8 @@
 
 #include "types/address-types/address_types.h"
 #include "services/logging/logging.h"
+#include "configuration/configuration-handler/configuration_handler.h"
+#include "utilities/string-tools/string_tools.h"
 
 #include "./host_resolver.h"
 
@@ -21,8 +23,13 @@ bool get_local_addresses(bool is_https, addrinfo *address_list) {
     };
 
     int status;
-    // TODO: switch the port to be configurable.
-    if((status = getaddrinfo(NULL, PORTSTRING, &address_request, &address_list)) != 0) { 
+    char *port_string = malloc(sizeof(size_t));
+    if(!size_t_to_string(config.port, port_string)) {
+        ERROR_LOG("get_local_addresses: Error converting port into a string.\n");
+        return false;
+    }
+
+    if((status = getaddrinfo(NULL, port_string, &address_request, &address_list)) != 0) { 
         ERROR_LOG("get_local_addresses: Error resolving addresses: %s\n", gai_strerror(status));
         return false;
     }

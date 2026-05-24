@@ -11,9 +11,9 @@
 #include "./configuration_handler.h"
 
 // configuration values, defaults on init.
-static configuration config_cache = (configuration){
+configuration config = (configuration){
     .max_connections = DEFAULT_MAX_CONNECTIONS,
-    .port = DEFAULT_PORT 
+    .port = DEFAULT_PORT,
 };
 
 static bool validate_field_name(char *name, cfg_entry *entry_field) {
@@ -126,9 +126,9 @@ static bool parse_configuration(void) {
             return false;
         }
 
-        memcpy((unsigned char *)&config_cache + entry_field.offset, &value, sizeof(value));
+        memcpy((unsigned char *)&config + entry_field.offset, &value, sizeof(value));
         LOG("[ Configuration ]", "Set value `%s` = %zu.\n", field_name_cache, value);
-        DEBUG_LOG("Value directly from cache: %zu, %zu.\n", config_cache.max_connections, config_cache.port);
+        DEBUG_LOG("Value directly from cache: %zu, %zu.\n", config.max_connections, config.port);
     } 
     return true;
 }
@@ -149,7 +149,7 @@ bool fetch_configuration_by_name(char *target, size_t *value) {
         ERROR_LOG("Field name was invalid.\n");
         return false;
     }
-    *value = *(size_t *)((unsigned char *)&config_cache + entry_field.offset);
+    *value = *(size_t *)((unsigned char *)&config + entry_field.offset);
     return true;
 }
 
@@ -159,7 +159,7 @@ bool fetch_configuration_by_enum(config_values target, size_t *value) {
         ERROR_LOG("Field name was invalid.\n");
         return false;
     }
-    *value = *(size_t *)((unsigned char *)&config_cache + entry_field.offset);
+    *value = *(size_t *)((unsigned char *)&config + entry_field.offset);
     return true;
 }
 

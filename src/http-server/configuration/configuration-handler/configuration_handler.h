@@ -1,6 +1,8 @@
 #ifndef CONFIGURATION_HANDLER_H
 #define CONFIGURATION_HANDLER_H
 
+#include <stddef.h>
+
 #ifndef NDEBUG
 #define CONFIG_FILE "./configuration/release.cfg"
 #else
@@ -23,7 +25,9 @@ typedef enum {
 // keep fields the same data type so validation is straightforward.
 typedef struct {
     size_t  max_connections;
+    char *max_connections_string;
     size_t  port;
+    char *port_string;
 } configuration;
 
 // table of entries for lookup.
@@ -39,6 +43,8 @@ static const cfg_entry cfg_entries[] = {
     { NULL, 0, CONFIG_NULL },
 };
 
+extern configuration config;
+
 bool initialize_configuration(void);
 
 bool fetch_configuration_by_name(char *target, size_t *value);
@@ -46,3 +52,4 @@ bool fetch_configuration_by_name(char *target, size_t *value);
 bool fetch_configuration_by_enum(config_values target, size_t *value);
 
 #endif
+

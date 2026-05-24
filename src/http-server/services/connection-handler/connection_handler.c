@@ -5,16 +5,20 @@
 
 #include "types/address-types/address_types.h"
 #include "services/logging/logging.h"
+#include "configuration/configuration-handler/configuration_handler.h"
 
 #include "./connection_handler.h"
 
 bool find_bind(addrinfo *addresses, int **socket_descriptor) {
+    const size_t port = config.port;
+    const size_t max_connections = config.max_connections;
+
     while(addresses != NULL) { 
         // if debugging use localhost loopback.
         #ifndef NDEBUG
             sockaddr_in address = (sockaddr_in){
                 .sin_family = AF_INET,
-                .sin_port = htons(PORT)
+                .sin_port = htons(port)
             };
             inet_pton(AF_INET, IPV4_LOCALHOST, &address.sin_addr);
         #else
@@ -29,7 +33,7 @@ bool find_bind(addrinfo *addresses, int **socket_descriptor) {
             continue;
         }
 
-        setsockopt(testing_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+        setsockopt(testing_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
         if(bind(testing_descriptor, addresses->ai_addr, addresses->ai_addrlen) < 0) {
             char *bind_error = strerror(errno);
