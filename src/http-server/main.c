@@ -12,7 +12,43 @@
 
 int main(void) {
     if(!initialize_configuration()) {
+        ERROR_LOG("main: Failed to initialize configuration.\n");
+        return EXIT_FAILURE;
     }
+
+    size_t max_connections = 0;
+    if(!fetch_configuration_by_name("max_connections", &max_connections)) {
+        ERROR_LOG("main: Failed to fetch max_connections by name.\n");
+        return EXIT_FAILURE;
+    }
+
+    LOG("[ max_connections by name ]", "%zu.\n", max_connections);
+
+    config_values max_connections_enum = CONFIG_MAX_CONNECTIONS;
+    max_connections = 0;
+    if(!fetch_configuration_by_enum(max_connections_enum, &max_connections)) {
+        ERROR_LOG("main: Failed to fetch max_connections by enum value.\n");
+        return EXIT_FAILURE;
+    }
+
+    LOG("[ max_connections by enum ]", "%zu.\n", max_connections);
+
+    size_t port = 0;
+    if(!fetch_configuration_by_name("port", &port)) {
+        ERROR_LOG("main: Failed to fetch port by name.\n");
+        return EXIT_FAILURE;
+    }
+
+    LOG("[ port by name ]", "%zu.\n", port);
+
+    config_values port_value_enum = CONFIG_PORT;
+    port = 0;
+    if(!fetch_configuration_by_enum(port_value_enum, &port)) {
+        ERROR_LOG("main: Failed to fetch port by enum value.\n");
+        return EXIT_FAILURE;
+    }
+
+    LOG("[ port by enum ]", "%zu.\n", port);
 
     addrinfo addresses; 
     if(!get_local_addresses(true, &addresses)) {

@@ -16,6 +16,30 @@ static configuration config_cache = (configuration){
     .port = DEFAULT_PORT 
 };
 
+static bool validate_field_name(char *name, cfg_entry *entry_field) {
+    const cfg_entry *valid_entries = cfg_entries;
+    while(valid_entries != NULL) {
+        if(strcmp(name, valid_entries->name) == 0) {
+            entry_field = valid_entries;
+            return true; 
+        }
+        ++valid_entries;
+    }
+    return false;
+}
+
+static bool find_enum_row(config_values target, cfg_entry *entry_field) {
+    const cfg_entry *valid_entries = cfg_entries;
+    while(valid_entries != NULL) {
+        if(target == valid_entries->type) {
+            entry_field = valid_entries;
+            return true; 
+        }
+        ++valid_entries;
+    }
+    return false;
+}
+
 static bool parse_configuration(void) { 
     // validate folder path.
     struct stat status;
@@ -47,21 +71,9 @@ static bool parse_configuration(void) {
 
         DEBUG_LOG("initialize_configuration: Read configuration field name: %s.\n", field_name_cache);
 
-        // validate field name.
-        const cfg_entry *valid_entries = cfg_entries;
-        const cfg_entry *entry_field;
-        bool name_validated = false; 
+        cfg_entry entry_field;
 
-        while(valid_entries != NULL) {
-            if(strcmp(field_name_cache, valid_entries->name) == 0) {
-                name_validated = true;
-                entry_field = valid_entries;
-                break;
-            }
-            ++valid_entries;
-        }
-
-        if(!name_validated) {
+        if(!validate_field_name(field_name_cache, &entry_field)) {
             ERROR_LOG("Could not validate name of configuration field: %s.\n", field_name_cache);
             return false;
         }
@@ -114,13 +126,13 @@ static bool parse_configuration(void) {
             return false;
         }
 
-        memcpy((unsigned char *)&config_cache + entry_field->offset, &value, sizeof(value));
+        memcpy((unsigned char *)&config_cache + entry_field.offset, &value, sizeof(value));
         LOG("[ Configuration ]", "Set value to: %s = %zu.\n", field_name_cache, value);
     } 
     return true;
 }
 
-bool initialize_configuratin(void) {
+bool initialize_configuration(void) {
     if(!parse_configuration()) {
         ERROR_LOG("Defaulting to default configuration.\n");
         return false;
@@ -128,5 +140,25 @@ bool initialize_configuratin(void) {
         DEBUG_LOG("Configuration loaded successfully.\n");
         return true;
     }
+}
+
+bool fetch_configuration_by_name(char *target, size_t *value) {
+    cfg_entry entry_field;
+    if(!validate_field_name(target, &entry_field)) {
+        ERROR_LOG("Field name was invalid.\n");
+        return false;
+    }
+    *value = (size_t)((unsigned char *)&config_cache + entry_field.offset);
+    return true;
+}
+
+bool fetch_configuration_by_enum(config_values target, size_t *value) {
+    cfg_entry entry_field;
+    if(!find_enum_row(target, &entry_field)) {
+        ERROR_LOG("Field name was invalid.\n");
+        return false;
+    }
+    *value = (size_t)((unsigned char *)&config_cache + entry_field.offset);
+    return true;
 }
 
