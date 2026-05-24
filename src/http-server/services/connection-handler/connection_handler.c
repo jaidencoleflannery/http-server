@@ -13,7 +13,7 @@ bool find_bind(addrinfo *addresses, int **socket_descriptor) {
     const size_t port = config.port;
     const size_t max_connections = config.max_connections;
 
-    while(addresses != NULL) { 
+    while(addresses) { 
         // if debugging use localhost loopback.
         #ifndef NDEBUG
             sockaddr_in address = (sockaddr_in){
