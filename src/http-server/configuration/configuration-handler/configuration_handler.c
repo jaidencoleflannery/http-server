@@ -18,9 +18,9 @@ static configuration config_cache = (configuration){
 
 static bool validate_field_name(char *name, cfg_entry *entry_field) {
     const cfg_entry *valid_entries = cfg_entries;
-    while(valid_entries != NULL) {
+    while(valid_entries->name != NULL) {
         if(strcmp(name, valid_entries->name) == 0) {
-            entry_field = valid_entries;
+            *entry_field = *valid_entries;
             return true; 
         }
         ++valid_entries;
@@ -30,9 +30,9 @@ static bool validate_field_name(char *name, cfg_entry *entry_field) {
 
 static bool find_enum_row(config_values target, cfg_entry *entry_field) {
     const cfg_entry *valid_entries = cfg_entries;
-    while(valid_entries != NULL) {
+    while(valid_entries->type != CONFIG_NULL) {
         if(target == valid_entries->type) {
-            entry_field = valid_entries;
+            *entry_field = *valid_entries;
             return true; 
         }
         ++valid_entries;
@@ -44,13 +44,13 @@ static bool parse_configuration(void) {
     // validate folder path.
     struct stat status;
     if(stat(CONFIG_FOLDER, &status) != 0) {
-        ERROR_LOG("Configuration folder could not be found. This program expects a `./configuration/` folder in root. Error: %s.\n", strerror(errno));
+        ERROR_LOG("Configuration folder could not be found. This program expects a `./configuration/` folder in root. Error: `%s`.\n", strerror(errno));
         return false;
     }
  
     FILE *configuration_file = fopen(CONFIG_FILE, READ_ONLY);
     if(configuration_file == NULL) {
-        ERROR_LOG("Could not open configuration file from folder: `./configuration/`. Error: %s.\n", strerror(errno));
+        ERROR_LOG("Could not open configuration file from folder: `./configuration/`. Error: `%s`.\n", strerror(errno));
         return false;
     } 
 
@@ -59,9 +59,9 @@ static bool parse_configuration(void) {
     while(fgets(line, MAX_FIELD_LENGTH, configuration_file)) {
         char *line_cursor = line;
 
-        char field_name_cache[MAX_SECTION_LENGTH]; 
+        char field_name_cache[MAX_FIELD_LENGTH] = "";
         // get field name. 
-        for(int char_index = 0; char_index < MAX_SECTION_LENGTH; char_index++) {
+        for(int char_index = 0; char_index < MAX_FIELD_LENGTH; char_index++) {
             if(*line_cursor == ' ')
                 break;
 
@@ -69,55 +69,55 @@ static bool parse_configuration(void) {
             ++line_cursor;
         }
 
-        DEBUG_LOG("initialize_configuration: Read configuration field name: %s.\n", field_name_cache);
+        DEBUG_LOG("initialize_configuration: Read configuration field name: `%s`.\n", field_name_cache);
 
         cfg_entry entry_field;
 
         if(!validate_field_name(field_name_cache, &entry_field)) {
-            ERROR_LOG("Could not validate name of configuration field: %s.\n", field_name_cache);
+            ERROR_LOG("Could not validate name of configuration field: `%s`.\n", field_name_cache);
             return false;
         }
 
         // manually push through assignment section.
         ++line_cursor;
         if(*line_cursor != '=') {
-            ERROR_LOG("Configuration file is malformed around field name: %s.\n", field_name_cache);
+            ERROR_LOG("Configuration file is malformed around field name: `%s`.\n", field_name_cache);
             return false;
         }
         ++line_cursor;
         if(*line_cursor != ' ') {
-            ERROR_LOG("Configuration file is malformed around field name: %s.\n", field_name_cache);
+            ERROR_LOG("Configuration file is malformed around field name: `%s`.\n", field_name_cache);
             return false;
         }
         ++line_cursor;
         if(*line_cursor < '0' || *line_cursor > '9') {
-            ERROR_LOG("Configuration file is malformed around field name: %s.\n", field_name_cache);
+            ERROR_LOG("Configuration file is malformed around field name: `%s`.\n", field_name_cache);
             return false;
         }
 
         // get field value.
-        char field_value_cache[MAX_SECTION_LENGTH + 1]; // fgets appends a null terminator.
-        for(int char_index = 0; char_index < (MAX_SECTION_LENGTH + 1); char_index++) {
-            if(!*line_cursor)
+        char field_value_cache[MAX_VALUE_LENGTH]; // fgets appends a null terminator.
+        for(int char_index = 0; char_index < (MAX_VALUE_LENGTH + 1); char_index++) {
+            if(!*line_cursor || *line_cursor == '\n')
                 break;
 
             field_value_cache[char_index] = *line_cursor;
             ++line_cursor;
         }
 
-        DEBUG_LOG("initialize_configuration: Read configuration field value: %s.\n", field_value_cache);
+        DEBUG_LOG("initialize_configuration: Read configuration field value: `%s`.\n", field_value_cache);
 
         // convert string value into a number.
         char *value_cursor = field_value_cache;
         size_t value = 0;
-        while(value_cursor && *value_cursor != '\n') {
+        while(value_cursor && *value_cursor) {
             int current_value = (int)*value_cursor;
             if(current_value < 48 || current_value > 57) {
-                ERROR_LOG("Configuration field value is invalid, values must all be positive non-zero integer types.");
+                ERROR_LOG("Configuration field value is invalid, values must all be positive non-zero integer types.\n");
                 return false;
             }
 
-            value += (current_value - '0');
+            value = value * 10 + (current_value - '0');
             ++value_cursor;
         }
 
@@ -127,7 +127,8 @@ static bool parse_configuration(void) {
         }
 
         memcpy((unsigned char *)&config_cache + entry_field.offset, &value, sizeof(value));
-        LOG("[ Configuration ]", "Set value to: %s = %zu.\n", field_name_cache, value);
+        LOG("[ Configuration ]", "Set value `%s` = %zu.\n", field_name_cache, value);
+        DEBUG_LOG("Value directly from cache: %zu, %zu.\n", config_cache.max_connections, config_cache.port);
     } 
     return true;
 }
@@ -148,7 +149,7 @@ bool fetch_configuration_by_name(char *target, size_t *value) {
         ERROR_LOG("Field name was invalid.\n");
         return false;
     }
-    *value = (size_t)((unsigned char *)&config_cache + entry_field.offset);
+    *value = *(size_t *)((unsigned char *)&config_cache + entry_field.offset);
     return true;
 }
 
@@ -158,7 +159,7 @@ bool fetch_configuration_by_enum(config_values target, size_t *value) {
         ERROR_LOG("Field name was invalid.\n");
         return false;
     }
-    *value = (size_t)((unsigned char *)&config_cache + entry_field.offset);
+    *value = *(size_t *)((unsigned char *)&config_cache + entry_field.offset);
     return true;
 }
 

@@ -10,8 +10,8 @@
 #define CONFIG_FOLDER "configuration"
 #define DEFAULT_MAX_CONNECTIONS 4096
 #define DEFAULT_PORT 8888
-#define MAX_FIELD_LENGTH 400
-#define MAX_SECTION_LENGTH (MAX_FIELD_LENGTH / 2)
+#define MAX_VALUE_LENGTH 20
+#define MAX_FIELD_LENGTH 200
 #define READ_ONLY "r"
 
 typedef enum {
