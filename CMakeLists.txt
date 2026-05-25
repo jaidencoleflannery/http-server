@@ -14,6 +14,7 @@ add_library(
     ./src/http-server/services/connection-handler/connection_handler.c
     ./src/http-server/utilities/string-tools/string_tools.c 
     ./src/http-server/configuration/configuration-handler/configuration_handler.c
+    ./src/http-server/services/orchestrator/orchestrator.c
 )
 
 add_executable(

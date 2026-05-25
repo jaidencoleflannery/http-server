@@ -3,4 +3,6 @@
 
 bool find_connection(addrinfo *addresses);
 
+bool find_listen(addrinfo *addresses);
+
 #endif

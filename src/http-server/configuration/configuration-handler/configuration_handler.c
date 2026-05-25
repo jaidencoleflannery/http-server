@@ -55,11 +55,11 @@ static bool parse_configuration(void) {
     } 
 
     // read.
-    char line[MAX_FIELD_LENGTH];
+    char line[MAX_FIELD_LENGTH] = { 0 };
     while(fgets(line, MAX_FIELD_LENGTH, configuration_file)) {
         char *line_cursor = line;
 
-        char field_name_cache[MAX_FIELD_LENGTH] = "";
+        char field_name_cache[MAX_FIELD_LENGTH] = { 0 };
         // get field name. 
         for(int char_index = 0; char_index < MAX_FIELD_LENGTH; char_index++) {
             if(*line_cursor == ' ')
@@ -96,8 +96,8 @@ static bool parse_configuration(void) {
         }
 
         // get field value.
-        char field_value_cache[MAX_VALUE_LENGTH]; // fgets appends a null terminator.
-        for(int char_index = 0; char_index < (MAX_VALUE_LENGTH + 1); char_index++) {
+        char field_value_cache[MAX_VALUE_LENGTH] = { 0 }; // the null term and newline are left off of value.
+        for(int char_index = 0; char_index < (MAX_VALUE_LENGTH); char_index++) {
             if(!*line_cursor || *line_cursor == '\n')
                 break;
 
