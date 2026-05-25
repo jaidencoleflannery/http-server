@@ -61,8 +61,15 @@ bool boot_server() {
         ERROR_LOG("main: Failed to connect to local address.\n");
         return EXIT_FAILURE;
     }
+
+    DEBUG_LOG("main: Successfully listening on localhost:%zu.\n", config.port);
+
+    LOG("[ Orb ]", "Listening on port: %zu.\n", config.port);
+    LOG("[ Orb ]", "Exit (q):\n\n");
+
+    while(getchar() != 'q');
     
-    freeaddrinfo(&addresses); 
+    freeaddrinfo(&addresses);
     return EXIT_SUCCESS;
 
     return true;

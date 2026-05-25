@@ -15,6 +15,7 @@ typedef struct addrinfo addrinfo;
 typedef struct sockaddr sockaddr;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr_in6 sockaddr_in6;
+typedef struct sockaddr_storage sockaddr_storage;
 
 typedef struct ipv4_node {
     sockaddr_in sockaddr_in;

@@ -1,3 +1,4 @@
+#include <sys/socket.h>
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
@@ -78,14 +79,11 @@ bool find_connection(addrinfo *addresses) {
         return false;
     }
 
-    DEBUG_LOG("fd = %d.\n", *socket_descriptor);
-
-    sockaddr *cast_address = (sockaddr *)bound_address;
-
-    if(connect(*socket_descriptor, cast_address, sizeof(sockaddr_in)) < 0) {
+    if(connect(*socket_descriptor, (sockaddr *)bound_address, sizeof(sockaddr_in)) < 0) {
         char *connect_error = strerror(errno);
         DEBUG_LOG("find_connection: Failed to bind to local port, error: %s.\n", connect_error);
         close(*socket_descriptor);
+        return false;
     }
 
     return true;
@@ -109,9 +107,88 @@ bool find_listen(addrinfo *addresses) {
         char *connect_error = strerror(errno);
         DEBUG_LOG("find_connection: Failed to bind to local port, error: %s.\n", connect_error);
         close(*socket_descriptor);
+        return false;
     }
 
     return true;
 }
 
+bool shutdown_connection(int file_descriptor, int type) {
+    if(shutdown(file_descriptor, type) < 0) {
+        char *close_error = strerror(errno);
+        if(close_error == NULL)
+            DEBUG_LOG("get_connection: Error encountered while attempting to close socket %d: %s.\n", file_descriptor, close_error);
+        else
+            DEBUG_LOG("get_connection: Error encountered while attempting to close socket %d: %s.\n", file_descriptor, close_error);
+        return false;
+    }
+
+    return true;
+}
+
+bool accept_connection(int file_descriptor, sockaddr *address) {
+    if(accept(file_descriptor, address, &(socklen_t){ sizeof(sockaddr_storage) }) < 0) {
+        char *accept_error = strerror(errno);
+        if(accept_error == NULL)
+            DEBUG_LOG("get_connection: Listening file descriptor did not give any data. `errno` could not be properly parsed.\n");
+        else
+            DEBUG_LOG("get_connection: Listening file descriptor did not give any data: %s.\n", accept_error);
+        return false;
+    }
+
+    return true;
+}
+
+bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
+    size_t total_bytes_sent = 0;
+    while(total_bytes_sent < data_length) {
+        size_t bytes_sent = send(file_descriptor, (data + bytes_sent), (data_length - bytes_sent), 0);
+        if(bytes_sent == -1) {
+            char *send_error = strerror(errno);
+            if(send_error == NULL)
+                DEBUG_LOG("send_data: Failed to send data. `errno` could not be properly parsed.\n");
+            else
+                DEBUG_LOG("send_data: Failed to send data: %s.\n", send_error);
+            return false;
+        }
+
+        if(bytes_sent == 0) {
+            DEBUG_LOG("send_data: Unexpected error occurred while attempting to send data.\n");
+            return false;
+        }
+
+        total_bytes_sent += bytes_sent;
+        bytes_sent = 0; 
+    }
+
+    return true;
+}
+
+bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int flags) {
+    size_t bytes_received = recv(file_descriptor, buffer, buffer_length, 0);
+    if(bytes_received == -1) {
+        char *recv_error = strerror(errno);
+        if(recv_error == NULL)
+            DEBUG_LOG("send_data: Failed to receive data. `errno` could not be properly parsed.\n");
+        else
+            DEBUG_LOG("send_data: Failed to receive data: %s.\n", recv_error);
+        return false;
+    } else if(bytes_received == 0) {
+        DEBUG_LOG("send_data: Remote connection was closed.\n");
+        return false;
+    }
+
+    return true;
+}
+
+bool get_peer_name(int file_descriptor, sockaddr *result) {
+    if(getpeername(file_descriptor, result, &(socklen_t){ sizeof(sockaddr) })) {
+        char *peer_name_error = strerror(errno);
+        if(peer_name_error == NULL)
+            DEBUG_LOG("send_data: Failed to receive data. `errno` could not be properly parsed.\n");
+        else
+            DEBUG_LOG("send_data: Failed to receive data: %s.\n", peer_name_error);
+        return false;
+    }
+}
 
