@@ -7,6 +7,7 @@
 #include "types/address-types/address_types.h"
 #include "services/logging/logging.h"
 #include "configuration/configuration-handler/configuration_handler.h"
+#include "utilities/error-handler/error_handler.h"
 
 #include "./connection_handler.h"
 
@@ -114,27 +115,17 @@ bool find_listen(addrinfo *addresses) {
 }
 
 bool shutdown_connection(int file_descriptor, int type) {
-    if(shutdown(file_descriptor, type) < 0) {
-        char *close_error = strerror(errno);
-        if(close_error == NULL)
-            DEBUG_LOG("get_connection: Error encountered while attempting to close socket %d: %s.\n", file_descriptor, close_error);
-        else
-            DEBUG_LOG("get_connection: Error encountered while attempting to close socket %d: %s.\n", file_descriptor, close_error);
+    int shutdown_return = shutdown(file_descriptor, type);
+    if(!socket_validate(shutdown_return, "shutdown_connection", "Error encountered while attempting to close socket."))
         return false;
-    }
 
     return true;
 }
 
 bool accept_connection(int file_descriptor, sockaddr *address) {
-    if(accept(file_descriptor, address, &(socklen_t){ sizeof(sockaddr_storage) }) < 0) {
-        char *accept_error = strerror(errno);
-        if(accept_error == NULL)
-            DEBUG_LOG("get_connection: Listening file descriptor did not give any data. `errno` could not be properly parsed.\n");
-        else
-            DEBUG_LOG("get_connection: Listening file descriptor did not give any data: %s.\n", accept_error);
+    int accept_return = accept(file_descriptor, address, &(socklen_t){ sizeof(sockaddr_storage) });
+    if(!socket_validate(accept_return, "accept_connection", "Listening file descriptor did not give any data."))
         return false;
-    }
 
     return true;
 }
@@ -143,17 +134,10 @@ bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
     size_t total_bytes_sent = 0;
     while(total_bytes_sent < data_length) {
         size_t bytes_sent = send(file_descriptor, (data + bytes_sent), (data_length - bytes_sent), 0);
-        if(bytes_sent == -1) {
-            char *send_error = strerror(errno);
-            if(send_error == NULL)
-                DEBUG_LOG("send_data: Failed to send data. `errno` could not be properly parsed.\n");
-            else
-                DEBUG_LOG("send_data: Failed to send data: %s.\n", send_error);
+        if(!socket_validate(bytes_sent, "send_data", "Failed to send data."))
             return false;
-        }
-
         if(bytes_sent == 0) {
-            DEBUG_LOG("send_data: Unexpected error occurred while attempting to send data.\n");
+            ERROR_LOG("send_data: Unexpected error occurred while attempting to send data.\n");
             return false;
         }
 
@@ -166,12 +150,7 @@ bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
 
 bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int flags) {
     size_t bytes_received = recv(file_descriptor, buffer, buffer_length, 0);
-    if(bytes_received == -1) {
-        char *recv_error = strerror(errno);
-        if(recv_error == NULL)
-            DEBUG_LOG("send_data: Failed to receive data. `errno` could not be properly parsed.\n");
-        else
-            DEBUG_LOG("send_data: Failed to receive data: %s.\n", recv_error);
+    if(!socket_validate(bytes_received, "send_data", "Failed to receive data.")) {
         return false;
     } else if(bytes_received == 0) {
         DEBUG_LOG("send_data: Remote connection was closed.\n");
@@ -182,13 +161,10 @@ bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int f
 }
 
 bool get_peer_name(int file_descriptor, sockaddr *result) {
-    if(getpeername(file_descriptor, result, &(socklen_t){ sizeof(sockaddr) })) {
-        char *peer_name_error = strerror(errno);
-        if(peer_name_error == NULL)
-            DEBUG_LOG("send_data: Failed to receive data. `errno` could not be properly parsed.\n");
-        else
-            DEBUG_LOG("send_data: Failed to receive data: %s.\n", peer_name_error);
+    int peer_return = getpeername(file_descriptor, result, &(socklen_t){ sizeof(sockaddr) });
+    if(!socket_validate(peer_return, "peer_return", "Failed to receive data."))
         return false;
-    }
+
+    return true;
 }
 
