@@ -25,9 +25,7 @@ typedef enum {
 // keep fields the same data type so validation is straightforward.
 typedef struct {
     size_t  max_connections;
-    char *max_connections_string;
     size_t  port;
-    char *port_string;
 } configuration;
 
 // table of entries for lookup.

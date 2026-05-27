@@ -13,7 +13,7 @@
 // configuration values, defaults on init.
 configuration config = (configuration){
     .max_connections = DEFAULT_MAX_CONNECTIONS,
-    .port = DEFAULT_PORT,
+    .port = DEFAULT_PORT
 };
 
 static bool validate_field_name(char *name, cfg_entry *entry_field) {

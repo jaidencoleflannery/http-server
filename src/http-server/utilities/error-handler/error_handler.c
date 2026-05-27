@@ -8,6 +8,11 @@
 #include "./error_handler.h"
 
 bool validate_syscall(int value, char *caller, char *error_message) {
+    if(caller == NULL) {
+        ERROR_LOG("validate_syscall: The caller parameter provided was invalid. Provided error message: %s\n", error_message);
+        return false;
+    }
+
     if(value < 0) {
         char *socket_error = strerror(errno);
         if(socket_error == NULL)

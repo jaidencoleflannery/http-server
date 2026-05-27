@@ -11,53 +11,41 @@
 
 #include "./connection_handler.h"
 
-bool find_bind(addrinfo *addresses, int **socket_descriptor, sockaddr_in **bound_address) {
+bool find_bind(addrinfo *addresses, int **socket_descriptor, addrinfo **bound_address) {
     const size_t port = config.port;
 
-    sockaddr_in *address;
-
-    // if debugging use localhost loopback.
-    #ifndef NDEBUG
-        address = &(sockaddr_in){
-            .sin_family = AF_INET,
-            .sin_port = htons(port),
-        };
-        inet_pton(AF_INET, IPV4_LOCALHOST, &address->sin_addr);
-    #endif
-
     while(addresses->ai_addr) {
-        if(!address)
-            address = (sockaddr_in *)addresses->ai_addr;
-
         int testing_descriptor;
-        if((testing_descriptor = socket(address->sin_family, SOCK_STREAM, 0)) < 0) {
+        if((testing_descriptor = socket(addresses->ai_family, SOCK_STREAM, 0)) < 0) {
             char *socket_error = strerror(errno);
-            DEBUG_LOG("find_bind: Failed to open a socket, error: %s.\n", socket_error);
+            DEBUG_LOG("find_bind: Failed to open a socket, error: %s.", socket_error);
             addresses = addresses->ai_next;
             continue;
         }
 
         setsockopt(testing_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
-        if(bind(testing_descriptor, (sockaddr *)address, sizeof(*address)) < 0) {
-            char *bind_error = strerror(errno);
-            DEBUG_LOG("find_bind: Failed to bind to local port, error: %s.\n", bind_error);
+        if(!validate_syscall(
+            bind(testing_descriptor, (sockaddr *)addresses->ai_addr, sizeof(*addresses->ai_addr)), 
+            "find_bind", 
+            "find_bind: Failed to bind to local port, clossing file descriptor %d."
+        )) {
             close(testing_descriptor);
-            addresses = addresses->ai_next; 
+            addresses = addresses->ai_next;
             continue;
-        } else {
-            if(!testing_descriptor) {
-                ERROR_LOG("find_bind: Failed to allocate memory for port bind.\n");
-                return false;
-            }
-            *socket_descriptor = memcpy(*socket_descriptor, &testing_descriptor, sizeof(testing_descriptor));
-            *bound_address = memcpy(*bound_address, address, sizeof(*address));
-            break;
         }
+        if(!testing_descriptor) {
+            ERROR_LOG("find_bind: Failed to allocate memory for port bind.");
+            return false;
+        }
+        // persist past stack frame.
+        *socket_descriptor = memcpy(*socket_descriptor, &testing_descriptor, sizeof(testing_descriptor));
+        *bound_address = memcpy(*bound_address, addresses, sizeof(*addresses));
+        break;
     }
 
     if(!socket_descriptor) {
-        DEBUG_LOG("find_bind: No successful bindings for provided addresses.\n");
+        DEBUG_LOG("find_bind: No successful bindings for provided addresses.");
         return false;
     }
 
@@ -65,9 +53,10 @@ bool find_bind(addrinfo *addresses, int **socket_descriptor, sockaddr_in **bound
 }
 
 // for communicating with external servers.
+// TODO: this function needs to be fixed.
 bool find_connection(addrinfo *addresses) {
     int *socket_descriptor = calloc(1, sizeof(int));
-    sockaddr_in *bound_address = calloc(1, sizeof(sockaddr_in));
+    addrinfo *bound_address = calloc(1, sizeof(addrinfo));
 
     // iterate, first fit algo.  
     if(!find_bind(addresses, &socket_descriptor, &bound_address)) {
@@ -87,26 +76,26 @@ bool find_connection(addrinfo *addresses) {
         return false;
     }
 
+    freeaddrinfo(addresses);
+
     return true;
 }
 
-bool find_listen(addrinfo *addresses) {
+bool find_listen(addrinfo *addresses, addrinfo *bound_address) {
     int *socket_descriptor = calloc(1, sizeof(int));
-    sockaddr_in *bound_address = calloc(1, sizeof(sockaddr_in));
+    bound_address = calloc(1, sizeof(sockaddr_storage));
 
-    // iterate, first fit algo.  
+    // first fit algo.
     if(!find_bind(addresses, &socket_descriptor, &bound_address)) {
         DEBUG_LOG("find_connection: Failed to find to any provided addresses.\n");
         return false;
     }
 
-    // mac call to increase the number of available file descriptors.
-    struct rlimit fd_limit = { 92160, 92160 };
-    setrlimit(RLIMIT_NOFILE, &fd_limit);
-
-    if(listen(*socket_descriptor, config.max_connections)) {
-        char *connect_error = strerror(errno);
-        DEBUG_LOG("find_connection: Failed to bind to local port, error: %s.\n", connect_error);
+    if(validate_syscall(
+        listen(*socket_descriptor, config.max_connections), 
+        "find_listen", 
+        "find_connection: Failed to bind to local port, closing socket.")
+    ) { 
         close(*socket_descriptor);
         return false;
     }
@@ -150,10 +139,10 @@ bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
 
 bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int flags) {
     size_t bytes_received = recv(file_descriptor, buffer, buffer_length, 0);
-    if(!validate_syscall(bytes_received, "send_data", "Failed to receive data.")) {
+    if(!validate_syscall(bytes_received, "receive_data", "Failed to receive data.")) {
         return false;
     } else if(bytes_received == 0) {
-        DEBUG_LOG("send_data: Remote connection was closed.\n");
+        DEBUG_LOG("receive_data: Remote connection was closed.\n");
         return false;
     }
 
@@ -162,7 +151,15 @@ bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int f
 
 bool get_peer_name(int file_descriptor, sockaddr *result) {
     int peer_return = getpeername(file_descriptor, result, &(socklen_t){ sizeof(sockaddr) });
-    if(!validate_syscall(peer_return, "peer_return", "Failed to receive data."))
+    if(!validate_syscall(peer_return, "get_peer_name", "Failed to get peer name."))
+        return false;
+
+    return true;
+}
+
+bool get_host_name(char *result, size_t result_size) {
+    int host_return = gethostname(result, result_size);
+    if(!validate_syscall(host_return, "get_host_name", "Failed to get host name."))
         return false;
 
     return true;
