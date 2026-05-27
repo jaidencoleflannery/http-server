@@ -18,22 +18,19 @@ bool boot_server() {
         return EXIT_FAILURE;
     }
 
-    static addrinfo addresses;
+    addrinfo *addresses;
     if(!get_local_addresses(false, &addresses)) {
         ERROR_LOG("boot_server: Failed to fetch local addresses.");
         return EXIT_FAILURE;
-    } else if(addresses.ai_addr == NULL) {
-        ERROR_LOG("boot_server: Fetched local address structure contained a null address field.");
-        return EXIT_FAILURE;
-    }
+    } 
 
-    sockaddr_storage bound_address;
-    if(!find_listen(&addresses, &bound_address)) {
+    addrinfo bound_address;
+    if(!find_listen(addresses, &bound_address)) {
         ERROR_LOG("boot_server: Failed to listen to local address.");
         return EXIT_FAILURE;
     }
 
-    freeaddrinfo(&addresses);
+    freeaddrinfo(addresses);
 
     LOG("[ ORB ]", "Listening on port: %zu.", config.port);
     LOG("[ ORB ]", "Full address: %zu.", config.port);
@@ -41,9 +38,6 @@ bool boot_server() {
 
     while(getchar() != 'q');
     
-    freeaddrinfo(&addresses);
     return EXIT_SUCCESS;
-
-    return true;
 }
 

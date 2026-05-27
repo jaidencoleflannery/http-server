@@ -10,7 +10,7 @@
 
 #include "./host_resolver.h"
 
-bool get_local_addresses(bool is_https, addrinfo *address_list) { 
+bool get_local_addresses(bool is_https, addrinfo **address_list) { 
     DEBUG_LOG("get_local_addresses: Searching for local addresses.");
 
     addrinfo address_request = { 0 };
@@ -28,8 +28,13 @@ bool get_local_addresses(bool is_https, addrinfo *address_list) {
 
     int status;
     // cannot use validate_syscall here due to differing errno type.
-    if((status = getaddrinfo(NULL, port_string, &address_request, &address_list)) != 0) { 
-        ERROR_LOG("get_local_addresses: Error resolving addresses: %s", gai_strerror(status));
+    if((status = getaddrinfo(NULL, port_string, &address_request, address_list)) != 0) { 
+        ERROR_LOG("get_local_addresses: Error resolving addresses. Error: %s", gai_strerror(status));
+        return false;
+    }
+
+    if(address_list == NULL || *address_list == NULL) {
+        ERROR_LOG("get_local_addresses: Address returned was invalid. Error: %s", gai_strerror(status));
         return false;
     }
 

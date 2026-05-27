@@ -11,44 +11,41 @@
 
 #include "./connection_handler.h"
 
-bool find_bind(addrinfo *addresses, int **socket_descriptor, addrinfo **bound_address) {
+bool find_bind(addrinfo *addresses, int *socket_descriptor, addrinfo **bound_address) {
     const size_t port = config.port;
+    *socket_descriptor = -1;
 
-    while(addresses->ai_addr) {
-        int testing_descriptor;
-        if((testing_descriptor = socket(addresses->ai_family, SOCK_STREAM, 0)) < 0) {
+    while(addresses != NULL) { 
+        if((*socket_descriptor = socket(addresses->ai_family, SOCK_STREAM, 0)) < 0) {
             char *socket_error = strerror(errno);
             DEBUG_LOG("find_bind: Failed to open a socket, error: %s.", socket_error);
             addresses = addresses->ai_next;
             continue;
         }
 
-        setsockopt(testing_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+        setsockopt(*socket_descriptor, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
-        if(!validate_syscall(
-            bind(testing_descriptor, (sockaddr *)addresses->ai_addr, sizeof(*addresses->ai_addr)), 
-            "find_bind", 
-            "find_bind: Failed to bind to local port, clossing file descriptor %d."
-        )) {
-            close(testing_descriptor);
+        int status;
+        if((status = bind(*socket_descriptor, addresses->ai_addr, addresses->ai_addrlen)) < 0) {
+            char *bind_error = strerror(errno);
+            DEBUG_LOG("find_bind: Failed to bind to local port, closing file descriptor. Error: %s.", bind_error);
+            close(*socket_descriptor);
+            *socket_descriptor = -1;
             addresses = addresses->ai_next;
             continue;
         }
-        if(!testing_descriptor) {
-            ERROR_LOG("find_bind: Failed to allocate memory for port bind.");
-            return false;
-        }
+
         // persist past stack frame.
-        *socket_descriptor = memcpy(*socket_descriptor, &testing_descriptor, sizeof(testing_descriptor));
-        *bound_address = memcpy(*bound_address, addresses, sizeof(*addresses));
+        *bound_address = addresses;
         break;
     }
 
-    if(!socket_descriptor) {
+    if(*socket_descriptor < 0) {
         DEBUG_LOG("find_bind: No successful bindings for provided addresses.");
         return false;
     }
 
+    DEBUG_LOG("find_bind: Bound successfully. File descriptor: %d.", *socket_descriptor);
     return true;
 }
 
@@ -59,8 +56,8 @@ bool find_connection(addrinfo *addresses) {
     addrinfo *bound_address = calloc(1, sizeof(addrinfo));
 
     // iterate, first fit algo.  
-    if(!find_bind(addresses, &socket_descriptor, &bound_address)) {
-        DEBUG_LOG("find_connection: Failed to find to any provided addresses.\n");
+    if(!find_bind(addresses, socket_descriptor, &bound_address)) {
+        DEBUG_LOG("find_connection: Failed to connect to any provided addresses.\n");
         return false;
     }
 
@@ -77,7 +74,6 @@ bool find_connection(addrinfo *addresses) {
     }
 
     freeaddrinfo(addresses);
-
     return true;
 }
 
@@ -86,20 +82,20 @@ bool find_listen(addrinfo *addresses, addrinfo *bound_address) {
     bound_address = calloc(1, sizeof(sockaddr_storage));
 
     // first fit algo.
-    if(!find_bind(addresses, &socket_descriptor, &bound_address)) {
-        DEBUG_LOG("find_connection: Failed to find to any provided addresses.\n");
+    if(!find_bind(addresses, socket_descriptor, &bound_address)) {
+        ERROR_LOG("find_connection: Failed to bind to any provided addresses.");
         return false;
     }
 
-    if(validate_syscall(
-        listen(*socket_descriptor, config.max_connections), 
+    if(!validate_syscall(
+        listen(*socket_descriptor, (int)config.max_connections),
         "find_listen", 
-        "find_connection: Failed to bind to local port, closing socket.")
-    ) { 
-        close(*socket_descriptor);
+        "Failed to listen to local port.")
+    ) {
         return false;
     }
 
+    DEBUG_LOG("find_listen: Listening successfully.");
     return true;
 }
 
