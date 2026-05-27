@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <netdb.h>
+#include <pthread.h>
 
 #include "types/address-types/address_types.h"
 #include "services/logging/logging.h"
 #include "services/host-resolver/host_resolver.h"
 #include "services/connection-handler/connection_handler.h"
 #include "configuration/configuration-handler/configuration_handler.h"
+#include "utilities/error-handler/error_handler.h"
 
 #include "./orchestrator.h"
 
@@ -15,29 +17,50 @@ bool boot_server() {
 
     if(!initialize_configuration()) {
         ERROR_LOG("boot_server: Failed to initialize configuration.");
-        return EXIT_FAILURE;
+        return false;
     }
-
-    addrinfo *addresses;
+ 
+    addrinfo *addresses = { 0 }; 
     if(!get_local_addresses(false, &addresses)) {
         ERROR_LOG("boot_server: Failed to fetch local addresses.");
-        return EXIT_FAILURE;
+        return false;
     } 
 
-    addrinfo bound_address;
+    addrinfo bound_address; 
     if(!find_listen(addresses, &bound_address)) {
         ERROR_LOG("boot_server: Failed to listen to local address.");
-        return EXIT_FAILURE;
+        return false;
     }
 
     freeaddrinfo(addresses);
 
     LOG("[ ORB ]", "Listening on port: %zu.", config.port);
-    LOG("[ ORB ]", "Full address: %zu.", config.port);
-    LOG("[ ORB ]", "Exit (q):");
+    return true;
+}
 
-    while(getchar() != 'q');
-    
-    return EXIT_SUCCESS;
+bool start_processing() {
+    int *socket_descriptor = &(int){ -1 };
+    if(!get_socket_descriptor(socket_descriptor)) {
+        ERROR_LOG("start_processing: Fatal error, failed to fetch socket_descriptor. Descriptor returned: %d.", *socket_descriptor);
+        return false;
+    }
+
+    while(1) {
+        sockaddr_storage *client_address = &(sockaddr_storage){ 0 };
+        int client_descriptor = -1;
+        while(client_descriptor < 0)
+            client_descriptor = accept(*socket_descriptor, (sockaddr *)client_address, &(socklen_t){ sizeof(sockaddr) });
+        
+        DEBUG_LOG("Processing request on file descriptor: %d, for port: %zu.", *socket_descriptor, config.port);
+
+        char *buffer = calloc(1, RECEIVE_BUFFER_SIZE);
+        size_t num_bytes_read = 0;
+        if(!receive_data(client_descriptor, 0, RECEIVE_BUFFER_SIZE, buffer, &num_bytes_read))
+            ERROR_LOG("start_processing: Failed to receive data.");
+
+        LOG("[ RECEIVED ]", "%s", buffer);
+    }
+
+    return true;
 }
 
