@@ -12,7 +12,7 @@ bool configure_host() {
 
     struct rlimit fd_limit_container;
     int rlimit_result = getrlimit(RLIMIT_NOFILE, &fd_limit_container);
-    if(validate_syscall(rlimit_result, "configure_host", "Error fetching rate limit. Cannot confirm host configuration ran properly."))
+    if(!validate_syscall(rlimit_result, "configure_host", "Error fetching rate limit. Cannot confirm host configuration ran properly."))
         return false;
 
     if(fd_limit_container.rlim_cur != 92160 || fd_limit_container.rlim_max != 92160) {

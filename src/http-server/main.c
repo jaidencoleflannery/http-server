@@ -9,7 +9,7 @@
 
 int main(void) {
     if(!configure_host()) {
-        ERROR_LOG("main: Failed configure host.\n");
+        ERROR_LOG("main: Failed to configure host.\n");
         return EXIT_FAILURE;
     }
 

@@ -116,7 +116,7 @@ bool find_listen(addrinfo *addresses) {
 
 bool shutdown_connection(int file_descriptor, int type) {
     int shutdown_return = shutdown(file_descriptor, type);
-    if(!socket_validate(shutdown_return, "shutdown_connection", "Error encountered while attempting to close socket."))
+    if(!validate_syscall(shutdown_return, "shutdown_connection", "Error encountered while attempting to close socket."))
         return false;
 
     return true;
@@ -124,7 +124,7 @@ bool shutdown_connection(int file_descriptor, int type) {
 
 bool accept_connection(int file_descriptor, sockaddr *address) {
     int accept_return = accept(file_descriptor, address, &(socklen_t){ sizeof(sockaddr_storage) });
-    if(!socket_validate(accept_return, "accept_connection", "Listening file descriptor did not give any data."))
+    if(!validate_syscall(accept_return, "accept_connection", "Listening file descriptor did not give any data."))
         return false;
 
     return true;
@@ -134,7 +134,7 @@ bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
     size_t total_bytes_sent = 0;
     while(total_bytes_sent < data_length) {
         size_t bytes_sent = send(file_descriptor, (data + bytes_sent), (data_length - bytes_sent), 0);
-        if(!socket_validate(bytes_sent, "send_data", "Failed to send data."))
+        if(!validate_syscall(bytes_sent, "send_data", "Failed to send data."))
             return false;
         if(bytes_sent == 0) {
             ERROR_LOG("send_data: Unexpected error occurred while attempting to send data.\n");
@@ -150,7 +150,7 @@ bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
 
 bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int flags) {
     size_t bytes_received = recv(file_descriptor, buffer, buffer_length, 0);
-    if(!socket_validate(bytes_received, "send_data", "Failed to receive data.")) {
+    if(!validate_syscall(bytes_received, "send_data", "Failed to receive data.")) {
         return false;
     } else if(bytes_received == 0) {
         DEBUG_LOG("send_data: Remote connection was closed.\n");
@@ -162,7 +162,7 @@ bool receive_data(int file_descriptor, char *buffer, size_t buffer_length, int f
 
 bool get_peer_name(int file_descriptor, sockaddr *result) {
     int peer_return = getpeername(file_descriptor, result, &(socklen_t){ sizeof(sockaddr) });
-    if(!socket_validate(peer_return, "peer_return", "Failed to receive data."))
+    if(!validate_syscall(peer_return, "peer_return", "Failed to receive data."))
         return false;
 
     return true;

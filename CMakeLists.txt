@@ -15,6 +15,7 @@ add_library(
     ./src/http-server/utilities/string-tools/string_tools.c 
     ./src/http-server/configuration/configuration-handler/configuration_handler.c
     ./src/http-server/services/orchestrator/orchestrator.c
+    ./src/http-server/utilities/error-handler/error_handler.c
 )
 
 add_executable(
@@ -22,11 +23,10 @@ add_executable(
     ./src/http-server/main.c
 )
 
+set(CMAKE_BUILD_TYPE Debug)
+
 target_compile_options(orb PRIVATE -Wall -Wextra -Wpedantic -std=c17)
 
 target_include_directories(orb PRIVATE "./src/http-server/")
 target_include_directories(server PRIVATE "./src/http-server/")
 target_link_libraries(orb PRIVATE server)
-
-set(CMAKE_BUILD_TYPE Debug)
-
