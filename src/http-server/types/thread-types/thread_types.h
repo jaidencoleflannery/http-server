@@ -3,7 +3,7 @@
 
 typedef struct {
     int id;
-    pthread_t thread;
+    pthread_t pthread;
 } thread_instance;
 
 #endif
