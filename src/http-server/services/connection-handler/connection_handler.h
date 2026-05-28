@@ -9,4 +9,6 @@ bool receive_data(int file_descriptor, int flags, size_t buffer_length, char *bu
 
 bool get_socket_descriptor(int *result);
 
+bool get_host_name(char *result, size_t result_size);
+
 #endif

@@ -5,15 +5,18 @@
 #include <string.h>
 #include <errno.h>
 #include <stddef.h>
+#include <sys/sysctl.h>
 
 #include "services/logging/logging.h"
+#include "utilities/error-handler/error_handler.h"
 
 #include "./configuration_handler.h"
 
 // configuration values, defaults on init.
 configuration config = (configuration){
     .max_connections = DEFAULT_MAX_CONNECTIONS,
-    .port = DEFAULT_PORT
+    .port = DEFAULT_PORT,
+    .num_cores = DEFAULT_NUM_CORES
 };
 
 static bool validate_field_name(char *name, cfg_entry *entry_field) {
@@ -137,10 +140,28 @@ bool initialize_configuration(void) {
     if(!parse_configuration()) {
         ERROR_LOG("Defaulting to default configuration.");
         return false;
-    } else {
-        DEBUG_LOG("Configuration loaded successfully.");
-        return true;
     }
+
+    DEBUG_LOG("initialize_configuration: Configuration loaded successfully.");
+
+
+    int32_t *num_cores = &(int32_t){ -1 };
+    if(!validate_syscall(
+        sysctlbyname("hw.perflevel0.physicalcpu", num_cores, NULL, 0, 0), 
+        "initialize_configuration", 
+        "Failed to fetch number of performance cores on current machine.") 
+    )
+        return false;
+
+    if(*num_cores < 0) {
+        ERROR_LOG("Failed to fetch number of performance cores on current machine.");
+        return false;
+    }
+
+    config.num_cores = (size_t)*num_cores - 1; // leave one off so the system isn't fully exhausted.
+    DEBUG_LOG("initialize_configuration: Fetched number of cores successfully (%zu).", config.num_cores);
+
+    return true;
 }
 
 bool fetch_configuration_by_name(char *target, size_t *value) {

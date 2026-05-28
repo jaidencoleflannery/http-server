@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.20)
 project(
     orb 
     VERSION 1.0
-    DESCRIPTION "A hyper-efficient HTTP server, built in C."
+    DESCRIPTION "An efficient HTTP server for MacOS, built in C."
     LANGUAGES C
 )
 

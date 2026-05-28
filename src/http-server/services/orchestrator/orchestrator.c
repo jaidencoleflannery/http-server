@@ -4,6 +4,7 @@
 #include <pthread.h>
 
 #include "types/address-types/address_types.h"
+#include "types/thread-types/thread_types.h"
 #include "services/logging/logging.h"
 #include "services/host-resolver/host_resolver.h"
 #include "services/connection-handler/connection_handler.h"
@@ -45,13 +46,21 @@ bool start_processing() {
         return false;
     }
 
+    thread_instance thread[config.num_cores]; // prealloc pool based on num of performance cores.
+
     while(1) {
         sockaddr_storage *client_address = &(sockaddr_storage){ 0 };
         int client_descriptor = -1;
         while(client_descriptor < 0)
-            client_descriptor = accept(*socket_descriptor, (sockaddr *)client_address, &(socklen_t){ sizeof(sockaddr) });
+            client_descriptor = accept(*socket_descriptor, (sockaddr *)client_address, &(socklen_t){ sizeof(sockaddr) }); 
+
+        pthread_create(&thread, NULL, worker, &id);
+
+        char client[400];
+        get_host_name(client, 400);
         
         DEBUG_LOG("Processing request on file descriptor: %d, for port: %zu.", *socket_descriptor, config.port);
+        LOG("[ CONNECTION ]", "Connection received from: %s", client);
 
         char *buffer = calloc(1, RECEIVE_BUFFER_SIZE);
         size_t num_bytes_read = 0;
