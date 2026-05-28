@@ -108,10 +108,12 @@ bool shutdown_connection(int file_descriptor, int type) {
     return true;
 }
 
-bool accept_connection(int file_descriptor, sockaddr *address) {
-    int accept_return = accept(file_descriptor, address, &(socklen_t){ sizeof(sockaddr_storage) });
-    if(!validate_syscall(accept_return, "accept_connection", "Listening file descriptor did not give any data."))
+bool accept_connection(int file_descriptor, sockaddr_storage *address, int *client_descriptor) {
+    *client_descriptor = accept(file_descriptor, (sockaddr *)address, &(socklen_t){ sizeof(sockaddr_storage) });
+    if(!validate_syscall(*client_descriptor, "accept_connection", "Listening file descriptor did not give any data.")) {
+        *client_descriptor = -1;
         return false;
+    }
 
     return true;
 }

@@ -11,4 +11,6 @@ bool get_socket_descriptor(int *result);
 
 bool get_host_name(char *result, size_t result_size);
 
+bool accept_connection(int file_descriptor, sockaddr_storage *address, int *client_descriptor);
+
 #endif
