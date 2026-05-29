@@ -123,8 +123,8 @@ bool start_processing() {
                     return false;
                 }
 
-                if(!invoke_thread(client_descriptor)) {
-                    ERROR_LOG("start_processing: Fatal error, unable to invoke thread to process request.");
+                if(!queue_task(client_descriptor)) {
+                    ERROR_LOG("start_processing: Fatal error, unable to add connection to thread queue.");
                     return false;
                 } 
             }

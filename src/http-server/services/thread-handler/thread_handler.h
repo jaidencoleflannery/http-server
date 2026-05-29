@@ -6,6 +6,8 @@
 
 bool init_thread_handler();
 
-bool invoke_thread(int client_descriptor);
+bool queue_task(int client_descriptor);
+
+bool dequeue_task(int *result);
 
 #endif

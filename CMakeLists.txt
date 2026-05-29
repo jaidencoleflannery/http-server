@@ -16,6 +16,7 @@ add_library(
     ./src/http-server/configuration/configuration-handler/configuration_handler.c
     ./src/http-server/services/orchestrator/orchestrator.c
     ./src/http-server/utilities/error-handler/error_handler.c
+    ./src/http-server/services/thread-handler/thread_handler.c
 )
 
 add_executable(

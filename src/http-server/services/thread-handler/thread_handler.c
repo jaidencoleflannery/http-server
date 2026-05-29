@@ -114,7 +114,7 @@ static void *thread_runner(void * client_descriptor) {
     return NULL;
 }
 
-bool init_thread_handler() {
+bool init_thread_handler(void) {
     // initialize mutex values.
     if(pthread_mutex_init(&lock, NULL) != 0) {
         ERROR_LOG("init_thread_handler: Fatal error, failed to initialize mutex.");
