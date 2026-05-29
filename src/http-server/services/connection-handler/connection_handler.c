@@ -140,9 +140,13 @@ bool receive_data(int file_descriptor, int flags, size_t buffer_length, char *bu
     ssize_t bytes_received = recv(file_descriptor, buffer, buffer_length, flags);
     if(!validate_syscall(bytes_received, "receive_data", "Failed to receive data.")) {
         return false;
-    } else if(bytes_received == 0) {
+    }
+
+    *num_bytes_read = (size_t)bytes_received;
+
+    if(bytes_received == 0) {
         DEBUG_LOG("receive_data: Remote connection was closed.\n");
-        return false;
+        return true; 
     }
 
     return true;

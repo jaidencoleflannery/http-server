@@ -19,24 +19,72 @@ static connection_instance *queue_tail;
 static int count = 0;
 
 /*
- * threads implement the producer consumer pattern.
+ * thread_handler implements the producer consumer pattern.
  * the producer is the queue of connections, which the threads pull from.
  * whichever threads holds the mutex is waiting for a connection to arrive in the queue, once a connection arrives, it drops the mutex and starts processing that connection.
  * all other threads wait for the mutex to become available, and repeat the aforementioned behavior. 
  */
+
+bool queue_task(int client_descriptor) {
+    queue_tail->next = calloc(1, sizeof(connection_instance));
+    if(queue_tail->next == NULL) {
+        ERROR_LOG("queue_task: Failed to allocate memory for task.");
+        return false;
+    }
+
+    queue_tail->next->previous = queue_tail;
+    queue_tail = queue_tail->next;
+
+    ++count;
+    return true;
+}
+
+// returns the file descriptor for the connection.
+bool dequeue_task(int *result) {
+    connection_instance *task = queue_head->next;
+    if(task == NULL) {
+        ERROR_LOG("dequeue_task: Failure, no task found.");
+        return false;
+    }
+
+    *result = task->socket_descriptor;
+    if(result == NULL || *result < 0) {
+        ERROR_LOG("dequeue_task: Failure, socket descriptor in queue was invalid.");
+        *result = -1;
+        return false;
+    }
+
+    queue_head->next = queue_head->next->next;
+    queue_head->next->previous = queue_head;
+
+    free(task);
+    --count;
+    return true;
+}
 
 static bool process_request(int socket_descriptor) {
     char *buffer = calloc(1, RECEIVE_BUFFER_SIZE);
     if(buffer == NULL) {
         ERROR_LOG("process_request: Failed to allocate memory for buffer.");
         return false;
-    } 
+    }
 
     // TODO: need to loop on this until the message is finished.
     size_t num_bytes_read = 0;
-    if(!receive_data(socket_descriptor, 0, RECEIVE_BUFFER_SIZE, buffer, &num_bytes_read)) {
-        ERROR_LOG("start_processing: Failed to receive data.");
-        return false;
+    while(1) {
+        if(!receive_data(socket_descriptor, 0, (RECEIVE_BUFFER_SIZE - 1), buffer, &num_bytes_read)) {
+            ERROR_LOG("start_processing: Failed to receive data.");
+            return false;
+        }
+
+        buffer[RECEIVE_BUFFER_SIZE] = '\n';
+
+        LOG("[ MESSAGE ]", "%s...", buffer);
+
+        if(num_bytes_read < 1) {
+            DEBUG_LOG("process_request: Hit end of message.");
+            return true;
+        }
     }
 
     LOG("[ RECEIVED ]", "%s", buffer);
@@ -46,17 +94,21 @@ static bool process_request(int socket_descriptor) {
 static void *thread_runner(void * client_descriptor) {
     while(1) {
         pthread_mutex_lock(&lock);
-        while(count == 0) {
+        while(count == 0)
             pthread_cond_wait(&lock_available, &lock);
-        }
-    }
 
-    int socket_descriptor = dequeue_task();
-    pthread_mutex_unlock(&lock);
-    
-    if(!process_request(socket_descriptor)) {
-        ERROR_LOG("thread_runner: Unable to process request.");
-        return NULL;
+        int *socket_descriptor = &(int){ -1 };
+        if(!dequeue_task(socket_descriptor)) {
+            ERROR_LOG("process_request: Failed to fetch socket_descriptor from queue.");
+            return false;
+        }
+
+        pthread_mutex_unlock(&lock);
+        
+        if(!process_request(*socket_descriptor)) {
+            ERROR_LOG("thread_runner: Unable to process request.");
+            return NULL;
+        }
     }
 
     return NULL;
@@ -106,18 +158,4 @@ bool init_thread_handler() {
 
     return true;
 }
-
-bool queue_task(int client_descriptor) {
-    queue_tail->next = calloc(1, sizeof(connection_instance));
-    if(queue_tail->next == NULL) {
-        ERROR_LOG("queue_task: Failed to allocate memory for task.");
-        return false;
-    }
-    queue_tail = queue_tail->next;
-    return true;
-}
-
-bool dequeue_task() {
-}
-
 
