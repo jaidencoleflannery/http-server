@@ -147,7 +147,7 @@ bool initialize_configuration(void) {
 
     int32_t *num_cores = &(int32_t){ -1 };
     if(!validate_syscall(
-        sysctlbyname("hw.perflevel0.physicalcpu", num_cores, NULL, 0, 0), 
+        sysctlbyname("hw.perflevel0.physicalcpu", num_cores, &(size_t){ sizeof(*num_cores) }, 0, 0), 
         "initialize_configuration", 
         "Failed to fetch number of performance cores on current machine.") 
     )

@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #include "types/thread-types/thread_types.h"
 #include "services/logging/logging.h"
@@ -25,37 +26,45 @@ static int count = 0;
  * all other threads wait for the mutex to become available, and repeat the aforementioned behavior. 
  */
 
-bool queue_task(int client_descriptor) {
+bool enqueue_task(int client_descriptor) {
+    DEBUG_LOG("enqueue_task: Queuing task.");
     queue_tail->next = calloc(1, sizeof(connection_instance));
     if(queue_tail->next == NULL) {
-        ERROR_LOG("queue_task: Failed to allocate memory for task.");
+        ERROR_LOG("enqueue_task: Failed to allocate memory for task.");
         return false;
     }
 
     queue_tail->next->previous = queue_tail;
     queue_tail = queue_tail->next;
+    queue_tail->socket_descriptor = client_descriptor;
 
-    ++count;
+    ++count; 
+    DEBUG_LOG("enqueue_task: Task successfully queued, total tasks: %d.", count);
+    pthread_cond_signal(&lock_available); // notify waiting threads.
     return true;
 }
 
 // returns the file descriptor for the connection.
-bool dequeue_task(int *result) {
+bool pull_next_task(int *result) {
     connection_instance *task = queue_head->next;
     if(task == NULL) {
-        ERROR_LOG("dequeue_task: Failure, no task found.");
+        ERROR_LOG("pull_next_task: Failure, no task found.");
         return false;
     }
 
     *result = task->socket_descriptor;
     if(result == NULL || *result < 0) {
-        ERROR_LOG("dequeue_task: Failure, socket descriptor in queue was invalid.");
+        ERROR_LOG("pull_next_task: Failure, socket descriptor in queue was invalid.");
         *result = -1;
         return false;
     }
 
-    queue_head->next = queue_head->next->next;
-    queue_head->next->previous = queue_head;
+    if(queue_head->next->socket_descriptor == queue_tail->socket_descriptor) {
+        queue_head->next = NULL;
+    } else {
+        queue_head->next = queue_head->next->next;
+        queue_head->next->previous = queue_head;
+    }
 
     free(task);
     --count;
@@ -63,6 +72,8 @@ bool dequeue_task(int *result) {
 }
 
 static bool process_request(int socket_descriptor) {
+    DEBUG_LOG("process_request: Processing request on socket: %d.", socket_descriptor);
+
     char *buffer = calloc(1, RECEIVE_BUFFER_SIZE);
     if(buffer == NULL) {
         ERROR_LOG("process_request: Failed to allocate memory for buffer.");
@@ -92,21 +103,31 @@ static bool process_request(int socket_descriptor) {
 }
 
 static void *thread_runner(void * client_descriptor) {
-    while(1) {
-        pthread_mutex_lock(&lock);
-        while(count == 0)
-            pthread_cond_wait(&lock_available, &lock);
+    DEBUG_LOG("thread_runner: Waiting for a connection to join the queue.");
+    while(1) { 
+        pthread_mutex_lock(&lock); 
 
-        int *socket_descriptor = &(int){ -1 };
-        if(!dequeue_task(socket_descriptor)) {
-            ERROR_LOG("process_request: Failed to fetch socket_descriptor from queue.");
-            return false;
+        while(count == 0) {
+            DEBUG_LOG("thread_runner: Hit thread condition.");
+            pthread_cond_wait(&lock_available, &lock);
+        }
+
+        DEBUG_LOG("thread_runner: Value found in queue.");
+
+        int *socket_descriptor = calloc(1, sizeof(int));
+        *socket_descriptor = -1;
+        if(!pull_next_task(socket_descriptor)) {
+            ERROR_LOG("thread_runner: Failed to fetch socket_descriptor from queue.");
+            pthread_mutex_unlock(&lock);
+            return NULL;
         }
 
         pthread_mutex_unlock(&lock);
+        DEBUG_LOG("thread_runner: Released lock.");
         
         if(!process_request(*socket_descriptor)) {
             ERROR_LOG("thread_runner: Unable to process request.");
+            close(*socket_descriptor);
             return NULL;
         }
     }
@@ -115,6 +136,8 @@ static void *thread_runner(void * client_descriptor) {
 }
 
 bool init_thread_handler(void) {
+    DEBUG_LOG("init_thread_handler: Initializing thread handler service.");
+
     // initialize mutex values.
     if(pthread_mutex_init(&lock, NULL) != 0) {
         ERROR_LOG("init_thread_handler: Fatal error, failed to initialize mutex.");

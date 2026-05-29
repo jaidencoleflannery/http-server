@@ -92,6 +92,8 @@ bool start_processing() {
 
             // new connection.
             if((int)event.ident == *socket_descriptor) {
+                DEBUG_LOG("start_processing: New connection event found.");
+
                 sockaddr_storage *client_address = &(sockaddr_storage){ 0 };
                 int *client_descriptor = calloc(1, sizeof(int));
                 *client_descriptor = -1;
@@ -117,17 +119,21 @@ bool start_processing() {
                 }
             } else {
                 // connection received data, invoke a thread to process.
+                DEBUG_LOG("start_processing: Data received on existing connection.");
+
                 int client_descriptor = *(int *)event.udata;
                 if(client_descriptor < 0) {
                     ERROR_LOG("start_processing: Fatal error, unable to fetch socket ID for connection to client.");
                     return false;
                 }
 
-                if(!queue_task(client_descriptor)) {
+                if(!enqueue_task(client_descriptor)) {
                     ERROR_LOG("start_processing: Fatal error, unable to add connection to thread queue.");
                     return false;
                 } 
             }
+
+            continue;
         }
     }
 }
