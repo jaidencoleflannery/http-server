@@ -1,9 +1,16 @@
 #ifndef THREAD_TYPES_H
 #define THREAD_TYPES
 
-typedef struct {
+typedef struct thread {
     size_t virtual_id;
     pthread_t thread_id;
 } thread_instance;
 
+typedef struct connection {
+    size_t socket_descriptor;
+    struct connection *next;
+    struct connection *previous;
+} connection_instance;
+
 #endif
+

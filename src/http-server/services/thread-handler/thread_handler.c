@@ -11,65 +11,113 @@
 
 #include "./thread_handler.h"
 
-// TODO: virtualize kevent fd -> threads somehow.
-static thread_instance *threads;
-static size_t task_counter = 0;
+static thread_instance *threads; // holds all threads contiguously.
+static pthread_mutex_t lock;
+static pthread_cond_t lock_available;
+static connection_instance *queue_head; // linked list of connections.
+static connection_instance *queue_tail;
+static int count = 0;
 
-static void *process_request(void * client_descriptor) {
+/*
+ * threads implement the producer consumer pattern.
+ * the producer is the queue of connections, which the threads pull from.
+ * whichever threads holds the mutex is waiting for a connection to arrive in the queue, once a connection arrives, it drops the mutex and starts processing that connection.
+ * all other threads wait for the mutex to become available, and repeat the aforementioned behavior. 
+ */
+
+static bool process_request(int socket_descriptor) {
     char *buffer = calloc(1, RECEIVE_BUFFER_SIZE);
-        size_t num_bytes_read = 0;
-        // TODO: need to loop on this until the message is finished.
-        if(!receive_data(*(int *)client_descriptor, 0, RECEIVE_BUFFER_SIZE, buffer, &num_bytes_read))
-            ERROR_LOG("start_processing: Failed to receive data.");
+    if(buffer == NULL) {
+        ERROR_LOG("process_request: Failed to allocate memory for buffer.");
+        return false;
+    } 
 
-        LOG("[ RECEIVED ]", "%s", buffer);
+    // TODO: need to loop on this until the message is finished.
+    size_t num_bytes_read = 0;
+    if(!receive_data(socket_descriptor, 0, RECEIVE_BUFFER_SIZE, buffer, &num_bytes_read)) {
+        ERROR_LOG("start_processing: Failed to receive data.");
+        return false;
+    }
+
+    LOG("[ RECEIVED ]", "%s", buffer);
+    return true;
+}
+
+static void *thread_runner(void * client_descriptor) {
+    while(1) {
+        pthread_mutex_lock(&lock);
+        while(count == 0) {
+            pthread_cond_wait(&lock_available, &lock);
+        }
+    }
+
+    int socket_descriptor = dequeue_task();
+    pthread_mutex_unlock(&lock);
+    
+    if(!process_request(socket_descriptor)) {
+        ERROR_LOG("thread_runner: Unable to process request.");
+        return NULL;
+    }
+
     return NULL;
 }
 
 bool init_thread_handler() {
-    // prealloc pool based on num of performance cores.
-    threads = calloc(1, config.num_cores * sizeof(thread_instance));
-    if(threads == NULL) {
-        ERROR_LOG("init_thread_handler: Fatal error, failed to allocate memory for threads.");
+    // initialize mutex values.
+    if(pthread_mutex_init(&lock, NULL) != 0) {
+        ERROR_LOG("init_thread_handler: Fatal error, failed to initialize mutex.");
         return false;
     }
 
+    if(pthread_cond_init(&lock_available, NULL) != 0) {
+        ERROR_LOG("init_thread_handler: Fatal error, failed to initialize mutex condition.");
+        return false;
+    }
+
+    // prealloc pool based on num of performance cores.
+    threads = calloc(1, (config.num_cores * sizeof(thread_instance)));
+    if(threads == NULL) {
+        ERROR_LOG("init_thread_handler: Fatal error, failed to allocate memory for thread pool.");
+        return false;
+    }
+
+    // start threads and track values.
     for(int cursor = 0; cursor < config.num_cores; cursor++) {
-        thread_instance *thread = calloc(1, sizeof(thread_instance));
-        *thread = (thread_instance){
+        *(threads + cursor) = (thread_instance){
             .virtual_id = cursor,
-            .thread_id = calloc(1, sizeof(pthread_t))
+            .thread_id = (pthread_t)-1
         };
 
         if(!validate_syscall(
-            pthread_create(&(thread->thread_id), NULL, process_request, NULL),
+            pthread_create(&(threads + cursor)->thread_id, NULL, thread_runner, NULL),
             "start_processing",
             "Could not create a thread for processing.")
-        ) {
+        ) { return false; }
+
+        if((threads + cursor)->thread_id == (pthread_t)-1) {
+            ERROR_LOG("init_thread_handler: Fatal error, failed to create thread.");
             return false;
         }
     }
+ 
+    // initialize queue of connections.
+    queue_head = calloc(1, sizeof(connection_instance));
+    queue_tail = queue_head;
+
     return true;
 }
 
-bool free_pool() {
-    free(threads);
-    return true;
-}
-
-bool invoke_thread(int client_descriptor) {
-    if(!validate_syscall(
-        // round robin. <- actually, track which threads are actually available and round robin on those.
-        pthread_join(threads[task_counter % config.num_cores], NULL, process_request, &client_descriptor),
-        "start_processing",
-        "Could not create a thread for processing.")
-    ) {
+bool queue_task(int client_descriptor) {
+    queue_tail->next = calloc(1, sizeof(connection_instance));
+    if(queue_tail->next == NULL) {
+        ERROR_LOG("queue_task: Failed to allocate memory for task.");
         return false;
     }
+    queue_tail = queue_tail->next;
+    return true;
+}
+
+bool dequeue_task() {
 }
 
 
-example:
-
-// create the thread.
-        
