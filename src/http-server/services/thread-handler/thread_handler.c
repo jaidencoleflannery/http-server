@@ -107,29 +107,28 @@ static bool process_request(int socket_descriptor) {
     while(1) {
         memset(buffer, 0, RECEIVE_BUFFER_SIZE);
         if(!receive_data(socket_descriptor, 0, (RECEIVE_BUFFER_SIZE - 1), buffer, &num_bytes_read)) {
-            ERROR_LOG("start_processing: Failed to receive data.");
+            ERROR_LOG("process_request: Failed to receive data.");
             return false;
         }
-
         buffer[RECEIVE_BUFFER_SIZE] = '\0';
 
-        LOG("[ MESSAGE ]", "%s", buffer);
+        LOG("[ READ ]", "%s", buffer); 
 
-        char *response_buffer = calloc(64, sizeof(char));
-        if(!invoke_response(socket_descriptor, buffer, &response_buffer)) {
-            ERROR_LOG("process_request: Failed to invoke response.");
-            return false;
-        }
-
-        LOG("[ RESPONSE ]", "%s\n", response_buffer);
-
+        // end of data.
         if(num_bytes_read < 1) {
             DEBUG_LOG("process_request: Hit end of message.");
-            return true;
+            break;
         }
     }
 
-    LOG("[ RECEIVED ]", "%s", buffer);
+    char *response_buffer = calloc(64, sizeof(char));
+    if(!invoke_response(socket_descriptor, buffer, &response_buffer)) {
+        ERROR_LOG("process_request: Failed to invoke response.");
+        return false;
+    }
+
+    LOG("[ RESPONSE ]", "%s\n", response_buffer);
+
     return true;
 }
 

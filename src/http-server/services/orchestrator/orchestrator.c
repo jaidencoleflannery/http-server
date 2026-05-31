@@ -16,6 +16,84 @@
 
 #include "./orchestrator.h"
 
+/*
+ * orchestrator adds to a task queue via a multiplex cycle. 
+ * the queue is then processed fifo by thread_handler.
+ */
+
+static int event_queue;
+
+static bool poll_events(int socket_descriptor) {
+    // server runtime. 
+    while(1) {
+        struct kevent event;
+        int num_events = kevent(event_queue, NULL, 0, &event, 1, NULL);
+        if(!validate_syscall(
+            num_events,
+            "poll_events",
+            "Fatal failure, failed to poll for events.")
+        ) { return false; }
+
+        if(num_events > 0) {
+            DEBUG_LOG("poll_events: Connection event flag signalled.");
+
+            sockaddr_storage *client_address = &(sockaddr_storage){ 0 };
+            int *client_descriptor = calloc(1, sizeof(int));
+            *client_descriptor = -1;
+            if(!accept_connection(client_address, client_descriptor)) {
+                ERROR_LOG("poll_events: Failed to accept connection.");
+                continue;
+            }
+ 
+            if((int)event.ident == socket_descriptor) {
+                // new connection.
+                DEBUG_LOG("poll_events: New connection event."); 
+
+                if(*client_descriptor == -1) {
+                    ERROR_LOG("poll_events: The stack variable client_descriptor was not properly set when the connection was accepted.");
+                    continue; // skip the connection; this should never happen.
+                }
+
+                // add new connection to queue.
+                struct kevent client_event;
+                EV_SET(&client_event, *client_descriptor, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, client_descriptor);
+                if(!validate_syscall(
+                    kevent(event_queue, &client_event, 1, NULL, 0, NULL),
+                    "poll_events",
+                    "Failed to add event for new connection.")
+                ) { continue; }
+
+            } else if(event.flags & EV_EOF) {
+                // connection dropped.
+                DEBUG_LOG("poll_events: Dropped connection event.");
+
+                struct kevent client_event;
+                EV_SET(&client_event, *client_descriptor, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+                if(!validate_syscall(
+                    kevent(event_queue, &client_event, 1, NULL, 0, NULL),
+                    "poll_events",
+                    "Failed to delete subscription from kqueue.")
+                ) { continue; }
+
+            } else {
+                // connection received data, invoke a thread to process.
+                DEBUG_LOG("poll_events: Data received event.");
+
+                int client_descriptor = *(int *)event.udata;
+                if(client_descriptor < 0) {
+                    ERROR_LOG("poll_events: Fatal error, unable to fetch socket ID for connection to client.");
+                    return false;
+                }
+
+                if(!enqueue_task(client_descriptor)) {
+                    ERROR_LOG("poll_events: Fatal error, unable to add connection to thread queue.");
+                    return false;
+                } 
+            }
+        }
+    }
+}
+
 bool boot_server() {
     LOG("[ ORB ]", "Booting server.");
 
@@ -44,9 +122,9 @@ bool boot_server() {
 
 bool start_processing() {
     // initialize data.
-    int *socket_descriptor = &(int){ -1 };
-    if(!get_socket_descriptor(socket_descriptor) || *socket_descriptor < 0) {
-        ERROR_LOG("start_processing: Fatal error, failed to fetch socket_descriptor. Descriptor returned: %d.", *socket_descriptor);
+    int socket_descriptor = -1;
+    if(!get_socket_descriptor(&socket_descriptor) || socket_descriptor < 0) {
+        ERROR_LOG("start_processing: Fatal error, failed to fetch socket_descriptor. Descriptor returned: %d.", socket_descriptor);
         return false;
     }
 
@@ -55,86 +133,27 @@ bool start_processing() {
         return false;
     }
  
-    int event_queue = kqueue();
+    event_queue = kqueue();
     if(!validate_syscall(
         event_queue,
         "start_processing",
         "Fatal error, Failed to initialize kqueue.")
-    ) {
-        return false;
-    }  
+    ) { return false; }  
 
-    // listen for new connections.
+    // subscribe.
     struct kevent data_event;
-    EV_SET(&data_event, *socket_descriptor, EVFILT_READ, EV_ADD, 0, 0, NULL);
+    EV_SET(&data_event, socket_descriptor, EVFILT_READ, EV_ADD, 0, 0, NULL);
     if(!validate_syscall(
         kevent(event_queue, &data_event, 1, NULL, 0, NULL),
         "start_processing",
         "Fatal error, failed to create kevent for main connection socket.")
-    ) {
+    ) { return false; } 
+
+    if(!poll_events(socket_descriptor)) {
+        ERROR_LOG("start_processig: Encountered an error invoking poll_events.");
         return false;
     }
 
-    // loop on event queue. 
-    while(1) {
-        struct kevent event;
-        int num_events = kevent(event_queue, NULL, 0, &event, 1, NULL);
-        if(!validate_syscall(
-            num_events,
-            "start_processing",
-            "Fatal failure, failed to poll for events.")
-        ) {
-            return false;
-        }
-
-        if(num_events > 0) {
-            DEBUG_LOG("start_processing: Connection event flag signalled.");
-
-            // new connection.
-            if((int)event.ident == *socket_descriptor) {
-                DEBUG_LOG("start_processing: New connection event found.");
-
-                sockaddr_storage *client_address = &(sockaddr_storage){ 0 };
-                int *client_descriptor = calloc(1, sizeof(int));
-                *client_descriptor = -1;
-                if(!accept_connection(*socket_descriptor, client_address, client_descriptor)) {
-                    ERROR_LOG("start_processing: Failed to accept connection.");
-                    continue;
-                }
-
-                if(*client_descriptor == -1) {
-                    ERROR_LOG("start_processing: The stack variable client_descriptor was not properly set when the connection was accepted.");
-                    continue; // skip the connection; this should never happen.
-                }
-
-                // add new connection to queue.
-                struct kevent client_event;
-                EV_SET(&client_event, *client_descriptor, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, client_descriptor);
-                if(!validate_syscall(
-                    kevent(event_queue, &client_event, 1, NULL, 0, NULL),
-                    "start_processing",
-                    "Failed to add event for new connection.")
-                ) {
-                    continue;
-                }
-            } else {
-                // connection received data, invoke a thread to process.
-                DEBUG_LOG("start_processing: Data received on existing connection.");
-
-                int client_descriptor = *(int *)event.udata;
-                if(client_descriptor < 0) {
-                    ERROR_LOG("start_processing: Fatal error, unable to fetch socket ID for connection to client.");
-                    return false;
-                }
-
-                if(!enqueue_task(client_descriptor)) {
-                    ERROR_LOG("start_processing: Fatal error, unable to add connection to thread queue.");
-                    return false;
-                } 
-            }
-
-            continue;
-        }
-    }
+    return true;
 }
 

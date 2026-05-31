@@ -92,9 +92,7 @@ bool find_listen(addrinfo *addresses, addrinfo *bound_address) {
         listen(socket_descriptor, (int)config.max_connections),
         "find_listen", 
         "Failed to listen to local port.")
-    ) {
-        return false;
-    }
+    ) { return false; }
 
     DEBUG_LOG("find_listen: Listening successfully.");
     return true;
@@ -108,8 +106,8 @@ bool shutdown_connection(int file_descriptor, int type) {
     return true;
 }
 
-bool accept_connection(int file_descriptor, sockaddr_storage *address, int *client_descriptor) {
-    *client_descriptor = accept(file_descriptor, (sockaddr *)address, &(socklen_t){ sizeof(sockaddr_storage) });
+bool accept_connection(sockaddr_storage *address, int *client_descriptor) {
+    *client_descriptor = accept(socket_descriptor, (sockaddr *)address, &(socklen_t){ sizeof(sockaddr_storage) });
     if(!validate_syscall(*client_descriptor, "accept_connection", "Listening file descriptor did not give any data.")) {
         *client_descriptor = -1;
         return false;
@@ -138,9 +136,8 @@ bool send_data(int file_descriptor, char *data, size_t data_length, int flags) {
 
 bool receive_data(int file_descriptor, int flags, size_t buffer_length, char *buffer, size_t *num_bytes_read) {
     ssize_t bytes_received = recv(file_descriptor, buffer, buffer_length, flags);
-    if(!validate_syscall(bytes_received, "receive_data", "Failed to receive data.")) {
+    if(!validate_syscall(bytes_received, "receive_data", "Failed to receive data."))
         return false;
-    }
 
     *num_bytes_read = (size_t)bytes_received;
 

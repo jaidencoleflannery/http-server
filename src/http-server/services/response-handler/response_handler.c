@@ -4,7 +4,7 @@
 #include "./response_handler.h"
 
 bool invoke_response(int socket_descriptor, char *message, char **response) {
-    *response = "ok..."; 
+    *response = "ok...";
     return true;
 }
 
